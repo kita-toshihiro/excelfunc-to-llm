@@ -1,18 +1,20 @@
 Attribute VB_Name = "FunctionsLLM1"
 ' License: public domain (https://creativecommons.org/publicdomain/zero/1.0/)
 ' Kita Toshihiro https://tkita.net 2024
-' Mac”Å Excel‚Å‚à“®ì‚µ‚Ü‚·B‚»‚Ì‚½‚ß‚ÉAƒoƒbƒNƒXƒ‰ƒbƒVƒ…•¶š‚â
-' ƒ_ƒuƒ‹ƒNƒH[ƒe[ƒVƒ‡ƒ“•¶š‚Ì’u‚«Š·‚¦‚ğs‚Á‚Äˆ—‚µ‚Ä‚¢‚Ü‚·B
+' Macç‰ˆ Excelã§ã‚‚å‹•ä½œã—ã¾ã™ã€‚ãã®ãŸã‚ã«ã€ãƒãƒƒã‚¯ã‚¹ãƒ©ãƒƒã‚·ãƒ¥æ–‡å­—ã‚„
+' ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒ†ãƒ¼ã‚·ãƒ§ãƒ³æ–‡å­—ã®ç½®ãæ›ãˆã‚’è¡Œã£ã¦å‡¦ç†ã—ã¦ã„ã¾ã™ã€‚
 
 Option Explicit
 
 Const GPT_API_URL As String = "https://api.openai.com/v1/chat/completions"
-Const DEFAULT_MODEL As String = "gpt-4o"
-'Const DEFAULT_MODEL As String = "gpt-3.5-turbo"
+'Const DEFAULT_MODEL As String = "gpt-4o"
+Const DEFAULT_MODEL As String = "gpt-4o-mini"
+'https://openai.com/api/pricing/
 
 Const GEMINI_API_URL As String = "https://generativelanguage.googleapis.com/v1beta/models/"
-Const GEMINI_DEFAULT_MODEL As String = "gemini-1.5-pro-latest"
-'Const GEMINI_DEFAULT_MODEL As String = "gemini-1.5-flash-latest"
+'Const GEMINI_DEFAULT_MODEL As String = "gemini-1.5-pro-latest"
+Const GEMINI_DEFAULT_MODEL As String = "gemini-1.5-flash-latest"
+'https://ai.google.dev/pricing
 
 Const DQ_ALT As String = "__@@" ' for MAC Excel
 
@@ -28,18 +30,21 @@ Function GPT(prompt As String, Optional model As String = DEFAULT_MODEL) As Stri
         model = DEFAULT_MODEL
     End If
     
-    'APIƒL[‚ğapiƒV[ƒg‚ÌA2‚©‚ç“Ç‚İ‚Ş
+    'APIã‚­ãƒ¼ã‚’apiã‚·ãƒ¼ãƒˆã®A2ã‹ã‚‰èª­ã¿è¾¼ã‚€
     apiKey = Sheets("api").Range("A2").value
+    
+    'max_tokens ã§æŒ‡å®šã™ã‚‹ã¨ã€æ–‡ç« ã®é€”ä¸­ã§çªç„¶åˆ‡ã‚ŒãŸå‡ºåŠ›ã«ãªã‚‹ã“ã¨ãŒå¤šã„ã€‚
+    prompt = "300æ–‡å­—ä»¥å†…ã§å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚" & prompt
 
-    ' JSONƒŠƒNƒGƒXƒg‚ğì¬
+    ' JSONãƒªã‚¯ã‚¨ã‚¹ãƒˆã‚’ä½œæˆ
     json = "{""model"":""" & model & """,""messages"":[{""role"":""user"",""content"":"""
-    json = json & EscapeJsonString(prompt) & """}],""max_tokens"":250,""temperature"":0.7}"
+    json = json & EscapeJsonString(prompt) & """}],""max_tokens"":350,""temperature"":0.7}"
 
 #If Mac Then
     Dim http As String
     Dim command As String
     Dim command1 As String
-    json = Replace(json, """", DQ_ALT) ' ƒ_ƒuƒ‹ƒNƒH[ƒg‚ğ’u‚«Š·‚¦
+    json = Replace(json, """", DQ_ALT) ' ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒˆã‚’ç½®ãæ›ãˆ
     command1 = "echo '" & json & "' | perl -pe '$a=chr(34);s/" & DQ_ALT & "/$a/g' | "
     command1 = command1 & "curl '" & GPT_API_URL & "' --header 'Content-Type: application/json' "
     command1 = command1 & " --header 'Authorization: Bearer " & apiKey & "' --data @- -X POST"
@@ -48,7 +53,7 @@ Function GPT(prompt As String, Optional model As String = DEFAULT_MODEL) As Stri
     response = http
 #Else
     Dim http As Object
-    ' HTTPƒIƒuƒWƒFƒNƒg (Windows”ÅExcel)
+    ' HTTPã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆ (Windowsç‰ˆExcel)
     Set http = CreateObject("MSXML2.XMLHTTP")
     http.Open "POST", GPT_API_URL, False
     http.setRequestHeader "Content-Type", "application/json"
@@ -57,14 +62,14 @@ Function GPT(prompt As String, Optional model As String = DEFAULT_MODEL) As Stri
     response = http.responseText
 #End If
     If InStr(response, """error""") > 0 Then
-        GPT = response 'ƒGƒ‰[‚Ìê‡‚ÍJSON‚ğ‚»‚Ì‚Ü‚Ü•\¦
+        GPT = response 'ã‚¨ãƒ©ãƒ¼ã®å ´åˆã¯JSONã‚’ãã®ã¾ã¾è¡¨ç¤º
     Else
         gptResponse = ParseGPTResponse(response)
         GPT = gptResponse
     End If
 End Function
 
-' ƒŒƒXƒ|ƒ“ƒXJSON‚ğƒp[ƒX‚·‚éŠÖ”
+' ãƒ¬ã‚¹ãƒãƒ³ã‚¹JSONã‚’ãƒ‘ãƒ¼ã‚¹ã™ã‚‹é–¢æ•°
 Private Function ParseGPTResponse(response As String) As String
     Dim startPos As Long
     Dim endPos As Long
@@ -75,20 +80,20 @@ Private Function ParseGPTResponse(response As String) As String
     searchString = """content"": """
     'searchString = """content"":"""
     
-    ' "content":" ‚ÌˆÊ’u‚ğ’T‚·
+    ' "content":" ã®ä½ç½®ã‚’æ¢ã™
     startPos = InStr(response, searchString)
     If startPos > 0 Then
         startPos = startPos + Len(searchString)
         endPos = FindUnescapedQuote(response, startPos)
         'endPos = InStr(startPos, response, """")
         If endPos > 0 Then
-            ' ƒRƒ“ƒeƒ“ƒc‚ğ’Šo
+            ' ã‚³ãƒ³ãƒ†ãƒ³ãƒ„ã‚’æŠ½å‡º
             content = Mid(response, startPos, endPos - startPos)
         End If
     End If
    
     tmp1 = UnescapeJsonString(content)
-    '––”ö‚Ì‰üs‚ğíœ
+    'æœ«å°¾ã®æ”¹è¡Œã‚’å‰Šé™¤
     If Right(tmp1, 1) = Chr(10) Then
         tmp1 = Left(tmp1, Len(tmp1) - 1)
     End If
@@ -99,12 +104,12 @@ Function GPTrange(rng As Range, Optional model As String = DEFAULT_MODEL) As Str
     GPTrange = GPT(RangeToStr(rng), model)
 End Function
 
-Function GPTtranslate(prompt As String, Optional model As String = DEFAULT_MODEL, Optional lang As String = "English") As String
-    GPTtranslate = GPT(prompt & Chr(92) & "n" & Chr(92) & "n ‚±‚Ì•¶Í‚ğ" & lang & "‚É–|–ó‚µ‚½‚à‚Ì : ", model)
+Function GPTtranslate(prompt As String, Optional lang As String = "English", Optional model As String = DEFAULT_MODEL) As String
+    GPTtranslate = GPT(prompt & Chr(92) & "n" & Chr(92) & "n ã“ã®æ–‡ç« ã‚’" & lang & "ã«ç¿»è¨³ã—ãŸã‚‚ã® : ", model)
 End Function
 
-Function GPTsummary(prompt As String, Optional model As String = DEFAULT_MODEL, Optional length As Integer = 200) As String
-    GPTsummary = GPT(prompt & Chr(92) & "n" & Chr(92) & "n ‚±‚Ì•¶Í‚ğ" & length & "•¶š‚Å—v–ñ‚µ‚½‚à‚Ì : ", model)
+Function GPTsummary(prompt As String, Optional length As Integer = 150, Optional model As String = DEFAULT_MODEL) As String
+    GPTsummary = GPT(prompt & Chr(92) & "n" & Chr(92) & "n ã“ã®æ–‡ç« ã‚’" & length & "æ–‡å­—ã§è¦ç´„ã—ãŸã‚‚ã® : ", model)
 End Function
 
 
@@ -121,18 +126,21 @@ Function Gemini(prompt As String, Optional model As String = GEMINI_DEFAULT_MODE
         model = GEMINI_DEFAULT_MODEL
     End If
     
-    ' APIƒL[‚ğapiƒV[ƒg‚ÌA3‚©‚ç“Ç‚İ‚Ş
+    ' APIã‚­ãƒ¼ã‚’apiã‚·ãƒ¼ãƒˆã®A3ã‹ã‚‰èª­ã¿è¾¼ã‚€
     apiKey = Sheets("api").Range("A3").value
     apiURL = GEMINI_API_URL & model & ":generateContent?key=" & apiKey
+    
+    'max_tokens ã§æŒ‡å®šã™ã‚‹ã¨ã€æ–‡ç« ã®é€”ä¸­ã§çªç„¶åˆ‡ã‚ŒãŸå‡ºåŠ›ã«ãªã‚‹ã“ã¨ãŒå¤šã„ã€‚
+    prompt = "300æ–‡å­—ä»¥å†…ã§å‡ºåŠ›ã—ã¦ãã ã•ã„ã€‚" & prompt
 
-    ' JSONƒŠƒNƒGƒXƒg‚ğì¬
+    ' JSONãƒªã‚¯ã‚¨ã‚¹ãƒˆã‚’ä½œæˆ
     json = "{""contents"":[{""parts"":[{""text"":""" & EscapeJsonString(prompt) & """}]}]}"
 
 #If Mac Then
     Dim http As String
     Dim command1 As String
     Dim command  As String
-    json = Replace(json, """", DQ_ALT) ' ƒ_ƒuƒ‹ƒNƒH[ƒg‚ğ’u‚«Š·‚¦
+    json = Replace(json, """", DQ_ALT) ' ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒˆã‚’ç½®ãæ›ãˆ
     command1 = "echo '" & json & "' | perl -pe '$a=chr(34);s/" & DQ_ALT & "/$a/g' | "
     command1 = command1 & " curl '" & apiURL & "' --header 'Content-Type: application/json' --data @- -X POST"
     command = "do shell script "" " & command1 & " "" "
@@ -140,7 +148,7 @@ Function Gemini(prompt As String, Optional model As String = GEMINI_DEFAULT_MODE
     response = http
 #Else
     Dim http As Object
-    ' HTTPƒIƒuƒWƒFƒNƒg‚ğì¬
+    ' HTTPã‚ªãƒ–ã‚¸ã‚§ã‚¯ãƒˆã‚’ä½œæˆ
     Set http = CreateObject("MSXML2.XMLHTTP")
     http.Open "POST", apiURL, False
     http.setRequestHeader "Content-Type", "application/json"
@@ -148,7 +156,7 @@ Function Gemini(prompt As String, Optional model As String = GEMINI_DEFAULT_MODE
     response = http.responseText
 #End If
     If InStr(response, """error""") > 0 Then
-        Gemini = response 'ƒGƒ‰[‚Ìê‡‚ÍJSON‚ğ‚»‚Ì‚Ü‚Ü•\¦
+        Gemini = response 'ã‚¨ãƒ©ãƒ¼ã®å ´åˆã¯JSONã‚’ãã®ã¾ã¾è¡¨ç¤º
     Else
         geminiResponse = ParseGeminiResponse(response)
         Gemini = geminiResponse
@@ -164,21 +172,21 @@ Private Function ParseGeminiResponse(response As String) As String
     
     searchString = """text"": """
 
-    ' "text: "‚ÌˆÊ’u‚ğ’T‚·
+    ' "text: "ã®ä½ç½®ã‚’æ¢ã™
     startPos = InStr(response, searchString)
     If startPos > 0 Then
         startPos = startPos + Len(searchString)
         endPos = FindUnescapedQuote(response, startPos)
         'endPos = InStr(startPos, response, """")
         If endPos > 0 Then
-            ' ƒRƒ“ƒeƒ“ƒc‚ğ’Šo
+            ' ã‚³ãƒ³ãƒ†ãƒ³ãƒ„ã‚’æŠ½å‡º
             content = Mid(response, startPos, endPos - startPos)
         End If
     End If
 
     tmp1 = UnescapeJsonString(content)
     tmp1 = Replace(tmp1, Chr(92) & "n", Chr(10))
-    '––”ö‚Ì‰üs‚ğíœ
+    'æœ«å°¾ã®æ”¹è¡Œã‚’å‰Šé™¤
     If Right(tmp1, 1) = Chr(10) Then
         tmp1 = Left(tmp1, Len(tmp1) - 1)
     End If
@@ -189,12 +197,12 @@ Function GeminiRange(rng As Range, Optional model As String = GEMINI_DEFAULT_MOD
     GeminiRange = Gemini(RangeToStr(rng), model)
 End Function
 
-Function GeminiTranslate(prompt As String, Optional model As String = GEMINI_DEFAULT_MODEL, Optional lang As String = "English") As String
-    GeminiTranslate = Gemini(prompt & Chr(92) & "n" & Chr(92) & "n ‚±‚Ì•¶Í‚ğ" & lang & "‚É–|–ó‚µ‚½‚à‚Ì : ", model)
+Function GeminiTranslate(prompt As String, Optional lang As String = "English", Optional model As String = GEMINI_DEFAULT_MODEL) As String
+    GeminiTranslate = Gemini(prompt & Chr(92) & "n" & Chr(92) & "n ã“ã®æ–‡ç« ã‚’" & lang & "ã«ç¿»è¨³ã—ãŸã‚‚ã® : ", model)
 End Function
 
-Function GeminiSummary(prompt As String, Optional model As String = GEMINI_DEFAULT_MODEL, Optional length As Integer = 200) As String
-    GeminiSummary = Gemini(prompt & Chr(92) & "n" & Chr(92) & "n ‚±‚Ì•¶Í‚ğ" & length & "•¶š‚Å—v–ñ‚µ‚½‚à‚Ì : ", model)
+Function GeminiSummary(prompt As String, Optional length As Integer = 150, Optional model As String = GEMINI_DEFAULT_MODEL) As String
+    GeminiSummary = Gemini(prompt & Chr(92) & "n" & Chr(92) & "n ã“ã®æ–‡ç« ã‚’" & length & "æ–‡å­—ã§è¦ç´„ã—ãŸã‚‚ã® : ", model)
 End Function
 
 ' --------------------------------------------------------------------------------------
@@ -205,15 +213,15 @@ Private Function FindUnescapedQuote(response As String, startPos As Long) As Lon
     
     startP = startPos
     Do
-        ' ƒRƒ“ƒeƒ“ƒc‚ÌI—¹ˆÊ’u‚ğ’T‚·
+        ' ã‚³ãƒ³ãƒ†ãƒ³ãƒ„ã®çµ‚äº†ä½ç½®ã‚’æ¢ã™
         endP = InStr(startP, response, """")
         
-        ' ƒGƒXƒP[ƒv‚³‚ê‚Ä‚¢‚È‚¢ƒ_ƒuƒ‹ƒNƒH[ƒg‚ğŒ©‚Â‚¯‚½ê‡‚Íƒ‹[ƒv‚ğI—¹
+        ' ã‚¨ã‚¹ã‚±ãƒ¼ãƒ—ã•ã‚Œã¦ã„ãªã„ãƒ€ãƒ–ãƒ«ã‚¯ã‚©ãƒ¼ãƒˆã‚’è¦‹ã¤ã‘ãŸå ´åˆã¯ãƒ«ãƒ¼ãƒ—ã‚’çµ‚äº†
         If endP = 0 Or Mid(response, endP - 1, 1) <> "\" Then
             Exit Do
         End If
         
-        ' Ÿ‚ÌˆÊ’u‚ÉˆÚ“®‚µ‚ÄÄ“xŒŸõ
+        ' æ¬¡ã®ä½ç½®ã«ç§»å‹•ã—ã¦å†åº¦æ¤œç´¢
         startP = endP + 1
     Loop While endP > 0
     
@@ -245,7 +253,7 @@ Function UnescapeJsonString(escapedStr As String) As String
 End Function
 
 
-'w’è‚µ‚½”ÍˆÍ‚ÌƒZƒ‹“à—e‚ğƒ}[ƒNƒ_ƒEƒ“‚Ì•\Œ`®‚Å•¶š—ñ‚Æ‚µ‚Ä•Ô‚·ŠÖ”
+'æŒ‡å®šã—ãŸç¯„å›²ã®ã‚»ãƒ«å†…å®¹ã‚’ãƒãƒ¼ã‚¯ãƒ€ã‚¦ãƒ³ã®è¡¨å½¢å¼ã§æ–‡å­—åˆ—ã¨ã—ã¦è¿”ã™é–¢æ•°
 Function RangeToStr(rng As Range) As String
     Dim cell As Range
     Dim row As Range
